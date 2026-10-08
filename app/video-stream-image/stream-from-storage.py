@@ -10,12 +10,8 @@ import boto3
 from botocore.client import Config
 
 
-def env(*names, default=""):
-    for name in names:
-        value = os.getenv(name)
-        if value:
-            return value
-    return default
+def env(name, default=""):
+    return os.getenv(name) or default
 
 
 def wait_for_tcp(host, port, attempts=60, delay_s=2):
@@ -24,15 +20,17 @@ def wait_for_tcp(host, port, attempts=60, delay_s=2):
             with socket.create_connection((host, port), timeout=2):
                 return
         except OSError as exc:
-            print(f"MediaMTX {host}:{port} not ready (attempt {attempt}/{attempts}): {exc}")
+            print(
+                f"MediaMTX {host}:{port} not ready (attempt {attempt}/{attempts}): {exc}"
+            )
             time.sleep(delay_s)
     raise SystemExit(f"MediaMTX {host}:{port} not reachable")
 
 
 def main():
-    endpoint = env("AWS_ENDPOINT_URL", "MINIO_ENDPOINT", default="http://aws-compatible-storage:7480")
-    bucket = env("VIDEO_BUCKET", "MINIO_VIDEO_BUCKET", default="data")
-    key = env("VIDEO_KEY", "MINIO_VIDEO_KEY", default="combined-video-no-gap-rooftop.mp4")
+    endpoint = env("AWS_ENDPOINT_URL", default="http://aws-compatible-storage:7480")
+    bucket = env("VIDEO_BUCKET", default="data")
+    key = env("VIDEO_KEY", default="combined-video-no-gap-rooftop.mp4")
     host = env("MEDIAMTX_HOST", default="video-stream")
     port = int(env("MEDIAMTX_PORT", default="8554"))
     dest = "/tmp/video.mp4"
@@ -40,8 +38,8 @@ def main():
     client = boto3.client(
         "s3",
         endpoint_url=endpoint,
-        aws_access_key_id=env("AWS_ACCESS_KEY_ID", "MINIO_ACCESS_KEY", default="s4admin"),
-        aws_secret_access_key=env("AWS_SECRET_ACCESS_KEY", "MINIO_SECRET_KEY", default="s4secret"),
+        aws_access_key_id=env("AWS_ACCESS_KEY_ID", default="s4admin"),
+        aws_secret_access_key=env("AWS_SECRET_ACCESS_KEY", default="s4secret"),
         region_name=env("AWS_DEFAULT_REGION", default="us-east-1"),
         config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
     )
