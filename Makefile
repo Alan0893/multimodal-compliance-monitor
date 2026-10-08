@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help local-up local-build-up local-down build push build-all push-all build-data push-data build-eval push-eval build-runtime push-runtime helm-deps deploy deploy-cpu deploy-gpu deploy-openvino-labelstudio deploy-labelstudio undeploy dev-backend dev-frontend local-build build-push-data build-jupyter-training push-jupyter-training kill-ports check-openai-env eval eval-k8s init-eval-db
+.PHONY: help local-up local-build-up local-down build push build-all push-all build-data push-data build-eval push-eval build-runtime push-runtime helm-deps deploy deploy-demo deploy-cpu deploy-gpu deploy-openvino-labelstudio deploy-labelstudio undeploy dev-backend dev-frontend local-build build-push-data build-jupyter-training push-jupyter-training kill-ports check-openai-env eval eval-k8s init-eval-db
 help:
 	@echo "Available targets:"
 	@echo "  local-up   - Start local stack with Podman Compose"
@@ -207,6 +207,45 @@ deploy: helm-deps check-openai-env
 		--set openai.apiEndpoint=$$OPENAI_API_ENDPOINT \
 		--set openai.model=$$OPENAI_MODEL \
 		--set openai.temperature=$$OPENAI_TEMPERATURE"; \
+	if [ -f $(HELM_CHART)/values-secrets.yaml ]; then \
+		helm_args="$$helm_args -f $(HELM_CHART)/values-secrets.yaml"; \
+	else \
+		echo "ERROR: $(HELM_CHART)/values-secrets.yaml not found."; \
+		echo "  Copy values-demo.yaml to values-secrets.yaml and set real credentials,"; \
+		echo "  or use 'make deploy-demo' for local demo keys."; \
+		exit 1; \
+	fi; \
+	helm upgrade --install $(HELM_RELEASE) $(HELM_CHART) \
+		--namespace $(NAMESPACE) --create-namespace $$helm_args
+
+deploy-demo: helm-deps check-openai-env ## Deploy with local demo S3 credentials (values-demo.yaml)
+	@. ./.env; \
+	domain=$$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || true); \
+	if [ -n "$(NAMESPACE)" ]; then oc new-project "$(NAMESPACE)" --display-name="$(NAMESPACE)" >/dev/null 2>&1 || oc project "$(NAMESPACE)"; fi; \
+	if [ -n "$$domain" ]; then \
+		host="$(HELM_RELEASE)-$(NAMESPACE).$$domain"; \
+		ls_host="$(HELM_RELEASE)-ls-$(NAMESPACE).$$domain"; \
+	else \
+		host=""; \
+		ls_host=""; \
+	fi; \
+	helm_args="--set global.imageRegistry=$(IMAGE_REGISTRY) \
+		--set jupyter-training.imageRegistry=$(IMAGE_REGISTRY) \
+		--set backend.image.tag=$(IMAGE_TAG) \
+		--set frontend.image.tag=$(IMAGE_TAG) \
+		--set data.image.tag=$(IMAGE_TAG) \
+		--set eval.image.tag=$(IMAGE_TAG) \
+		--set runtimeDeployer.image.tag=$(IMAGE_TAG) \
+		--set jupyter-training.image.tag=$(IMAGE_TAG) \
+		--set modelServing.runtimeType=$(RUNTIME_TYPE) \
+		$(if $(strip $(LABEL_STUDIO_ENABLED)),--set labelStudio.enabled=$(LABEL_STUDIO_ENABLED),) \
+		$${host:+--set openshift.sharedHost=$$host} \
+		$${ls_host:+--set labelStudio.route.host=$$ls_host} \
+		--set openai.apiToken=$$OPENAI_API_TOKEN \
+		--set openai.apiEndpoint=$$OPENAI_API_ENDPOINT \
+		--set openai.model=$$OPENAI_MODEL \
+		--set openai.temperature=$$OPENAI_TEMPERATURE \
+		-f $(HELM_CHART)/values-demo.yaml"; \
 	helm upgrade --install $(HELM_RELEASE) $(HELM_CHART) \
 		--namespace $(NAMESPACE) --create-namespace $$helm_args
 
@@ -265,17 +304,17 @@ kill-ports: ## Kill processes using required ports
 	fi
 	@echo "   ✓ OVMS gRPC 8081 killed"
 	@if [ "$$(uname)" = "Darwin" ]; then \
-		lsof -ti :9000 | xargs kill -9 2>/dev/null || true; \
+		lsof -ti :7480 | xargs kill -9 2>/dev/null || true; \
 	else \
-		fuser -k 9000/tcp 2>/dev/null || true; \
+		fuser -k 7480/tcp 2>/dev/null || true; \
 	fi
-	@echo "   ✓ MinIO 9000 killed"
+	@echo "   ✓ S4 S3 API 7480 killed"
 	@if [ "$$(uname)" = "Darwin" ]; then \
-		lsof -ti :9001 | xargs kill -9 2>/dev/null || true; \
+		lsof -ti :5000 | xargs kill -9 2>/dev/null || true; \
 	else \
-		fuser -k 9001/tcp 2>/dev/null || true; \
+		fuser -k 5000/tcp 2>/dev/null || true; \
 	fi
-	@echo "   ✓ MinIO Console 9001 killed"
+	@echo "   ✓ S4 UI 5000 killed"
 	@if [ "$$(uname)" = "Darwin" ]; then \
 		lsof -ti :5432 | xargs kill -9 2>/dev/null || true; \
 	else \
