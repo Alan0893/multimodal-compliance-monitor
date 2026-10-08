@@ -20,7 +20,7 @@ WORKDIR /extract
 COPY data/combined-video-no-gap-rooftop.mp4.7z.* ./data/
 RUN cd data && 7z x combined-video-no-gap-rooftop.mp4.7z.001
 
-# Sample MP4 for bird demo (same bucket as rooftop clip; see upload.sh)
+# Sample MP4 for bird demo (same bucket as rooftop clip; see upload.py)
 COPY data/bluejayclear.mp4 ./data/
 
 COPY data/cars.mp4 ./data/
@@ -36,8 +36,8 @@ COPY data-image/export_models.py /tmp/export_models.py
 RUN pip install --no-cache-dir git+https://github.com/openai/CLIP.git && \
     python3 /tmp/export_models.py
 
-# Stage 3: UBI Python uploader (boto3). Do not ship minio/mc.
-FROM registry.redhat.io/ubi9/python-311:latest
+# Stage 3: UBI Python uploader (boto3), publicly pullable without registry login.
+FROM registry.access.redhat.com/ubi9/python-311:1-77
 
 USER 0
 RUN pip install --no-cache-dir boto3

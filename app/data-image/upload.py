@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Upload model and video objects to aws-compatible-storage (S4).
 
-Idempotent: existing objects are left in place. Replaces the former minio/mc uploader.
+Idempotent: existing objects are left in place.
 """
 
 import os
@@ -13,20 +13,18 @@ from botocore.client import Config
 from botocore.exceptions import ClientError
 
 
-def env(*names, default=""):
-    for name in names:
-        value = os.getenv(name)
-        if value:
-            return value
-    return default
+def env(name, default=""):
+    return os.getenv(name) or default
 
 
 def s3_client():
     return boto3.client(
         "s3",
-        endpoint_url=env("AWS_ENDPOINT_URL", "MINIO_ENDPOINT", default="http://aws-compatible-storage:7480"),
-        aws_access_key_id=env("AWS_ACCESS_KEY_ID", "MINIO_ACCESS_KEY", default="s4admin"),
-        aws_secret_access_key=env("AWS_SECRET_ACCESS_KEY", "MINIO_SECRET_KEY", default="s4secret"),
+        endpoint_url=env(
+            "AWS_ENDPOINT_URL", default="http://aws-compatible-storage:7480"
+        ),
+        aws_access_key_id=env("AWS_ACCESS_KEY_ID", default="s4admin"),
+        aws_secret_access_key=env("AWS_SECRET_ACCESS_KEY", default="s4secret"),
         region_name=env("AWS_DEFAULT_REGION", default="us-east-1"),
         config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
     )
@@ -89,7 +87,10 @@ def upload_tree(client, local_dir, bucket, prefix):
 def regen_ovms_config():
     mount_base = os.environ.get("OVMS_CLUSTER_MOUNT_BASE", "/mnt/models")
     nireq = os.environ.get("OVMS_CONFIG_NIREQ", "2")
-    plugin = os.environ.get("OVMS_CONFIG_PLUGIN_CONFIG") or '{"PERFORMANCE_HINT": "THROUGHPUT"}'
+    plugin = (
+        os.environ.get("OVMS_CONFIG_PLUGIN_CONFIG")
+        or '{"PERFORMANCE_HINT": "THROUGHPUT"}'
+    )
     shape = os.environ.get("OVMS_CONFIG_SHAPE", "")
     out = "/tmp/ovms-config.json"
     blocks = []
@@ -109,10 +110,10 @@ def regen_ovms_config():
             f'        "plugin_config": {plugin}'
         )
         if shape:
-            body += f",\n        \"shape\": {shape}"
+            body += f',\n        "shape": {shape}'
         body += "\n      }\n    }"
         blocks.append(body)
-    content = "{\n  \"model_config_list\": [\n" + ",\n".join(blocks) + "\n  ]\n}\n"
+    content = '{\n  "model_config_list": [\n' + ",\n".join(blocks) + "\n  ]\n}\n"
     with open(out, "w", encoding="utf-8") as handle:
         handle.write(content)
     print(f"Regenerated config.json (nireq={nireq})")
@@ -172,7 +173,11 @@ def main():
         config_file = os.path.join(ovms_root, "config.json")
         if any(
             os.environ.get(name)
-            for name in ("OVMS_CONFIG_NIREQ", "OVMS_CONFIG_PLUGIN_CONFIG", "OVMS_CONFIG_SHAPE")
+            for name in (
+                "OVMS_CONFIG_NIREQ",
+                "OVMS_CONFIG_PLUGIN_CONFIG",
+                "OVMS_CONFIG_SHAPE",
+            )
         ):
             config_file = regen_ovms_config()
         if os.path.isfile(config_file):
@@ -180,7 +185,9 @@ def main():
             upload_file(client, config_file, "models", "ovms/config.json")
 
     if runtime_type == "kserve":
-        print("Checking / uploading Triton ONNX model trees (triton/<model>/1/model.onnx)...")
+        print(
+            "Checking / uploading Triton ONNX model trees (triton/<model>/1/model.onnx)..."
+        )
         triton_root = "/upload/models/triton"
         if os.path.isdir(triton_root):
             for name in sorted(os.listdir(triton_root)):
@@ -202,7 +209,9 @@ def main():
     elif runtime_type == "openvino":
         print("Skipping Triton ONNX uploads (runtime is OpenVINO).")
     else:
-        print(f"ERROR: Unknown RUNTIME_TYPE '{runtime_type}'. Expected 'openvino' or 'kserve'.")
+        print(
+            f"ERROR: Unknown RUNTIME_TYPE '{runtime_type}'. Expected 'openvino' or 'kserve'."
+        )
         return 1
 
     print("Uploading raw .pt files (for reference / other runtimes)...")

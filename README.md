@@ -266,6 +266,13 @@ This starts:
 4. **frontend** - React app (port 3000)
 5. **Label Studio** - Annotation UI backed by PostgreSQL (port 8082)
 
+The data-loader runs [`app/data-image/upload.py`](app/data-image/upload.py) using
+Python and boto3 in a UBI image. This replaces the former shell uploader's
+vendor-specific CLI with the same S3 SDK used by the backend and bucket bootstrap
+job. It keeps the existing `models`, `data`, and `config` buckets, model/video
+object paths, skip-existing behavior, and OpenVINO configuration generation.
+No Python setup is needed on the host; the image includes the dependencies.
+
 #### Run without rebuild
 
 ```bash
