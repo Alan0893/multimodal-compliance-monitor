@@ -21,34 +21,37 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" }}
 {{/*
 Parent copies of the aws-compatible-storage helpers.
 
-Subchart defines are not callable with the parent root context. These resolve
-both contexts: subchart values (fullnameOverride / s3.existingSecret) and parent
-values (aws-compatible-storage.*). fullnameOverride is aws-compatible-storage.
+Helm named templates are global, so these helpers are also called by the subchart.
+Select the storage values first when called from the parent. The application's
+fullnameOverride must never override the storage Service name.
 */}}
 {{- define "aws-compatible-storage.fullname" -}}
-{{- if .Values.fullnameOverride -}}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- $storage := index .Values "aws-compatible-storage" | default dict -}}
+{{- $storage := .Values -}}
+{{- if hasKey .Values "aws-compatible-storage" -}}
+{{- $storage = index .Values "aws-compatible-storage" | default dict -}}
+{{- end -}}
 {{- if $storage.fullnameOverride -}}
 {{- $storage.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
-aws-compatible-storage
+{{- $name := $storage.nameOverride | default "aws-compatible-storage" -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
 
 {{- define "aws-compatible-storage.secretName" -}}
-{{- if and .Values.s3 .Values.s3.existingSecret -}}
-{{- .Values.s3.existingSecret -}}
-{{- else -}}
-{{- $storage := index .Values "aws-compatible-storage" | default dict -}}
+{{- $storage := .Values -}}
+{{- if hasKey .Values "aws-compatible-storage" -}}
+{{- $storage = index .Values "aws-compatible-storage" | default dict -}}
+{{- end -}}
 {{- $s3 := $storage.s3 | default dict -}}
 {{- if $s3.existingSecret -}}
 {{- $s3.existingSecret -}}
 {{- else -}}
 {{- printf "%s-credentials" (include "aws-compatible-storage.fullname" .) -}}
-{{- end -}}
 {{- end -}}
 {{- end -}}
 

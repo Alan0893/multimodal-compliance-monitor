@@ -233,7 +233,7 @@ helm upgrade multimodal-monitoring "$HELM_CHART" \
   --set storage.size=2Gi
 ```
 
-S3 credentials are not in `values.yaml`. `make deploy` applies `values-demo.yaml` (local demo keys) unless `values-secrets.yaml` exists. That overlay creates Secret `aws-compatible-storage-credentials`. Copy `values-demo.yaml` to `values-secrets.yaml` and replace the keys for a shared cluster.
+S3 credentials are not in `values.yaml`. `make deploy` requires `deploy/helm/ppe-compliance-monitor/values-secrets.yaml`, which is gitignored. Copy `values-demo.yaml` to that file and replace the S3 keys and UI credentials for your cluster. For demos, use `make deploy-demo` to explicitly apply `values-demo.yaml`. Both overlays create Secret `aws-compatible-storage-credentials`.
 
 OpenShift-specific options are included in the chart:
 - Frontend Route: `openshift.route.enabled` and optional `openshift.route.host`

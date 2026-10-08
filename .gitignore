@@ -32,6 +32,9 @@ dist/
 .env
 .env.*
 
+# Private Helm deployment credentials
+/deploy/helm/ppe-compliance-monitor/values-secrets.yaml
+
 # IDEs
 .idea/
 .vscode/
