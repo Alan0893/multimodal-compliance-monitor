@@ -104,4 +104,3 @@ For production, a Helm chart deploys the same application on Kubernetes or OpenS
 This project demonstrates what becomes possible when computer vision and large language models are combined in a single, end-to-end platform. The workflow spans from annotating images and training a custom YOLO model, through real-time video processing and multi-object tracking with persistent PPE association, to conversational analytics that let users query both live and historical compliance data in plain English.
 
 It is not a collection of disconnected AI demos — it is a cohesive application where each layer feeds the next: training produces models, models produce detections, detections produce tracks, tracks produce database records, and those records become queryable through natural-language chat and alerts. That integration is what makes it useful for real workplace safety monitoring, not just a proof of concept.
-
