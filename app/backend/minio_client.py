@@ -1,4 +1,12 @@
-"""MinIO client helper for downloading model and video files."""
+"""S3 client for aws-compatible-storage (S4).
+
+The MinIO Python SDK stays because it speaks the S3 API. Module and function
+names are kept so existing imports keep working.
+
+Preferred environment variables: ``AWS_ENDPOINT_URL``, ``AWS_ACCESS_KEY_ID``,
+``AWS_SECRET_ACCESS_KEY``. ``MINIO_ENDPOINT``, ``MINIO_ACCESS_KEY``,
+``MINIO_SECRET_KEY``, and ``MINIO_SECURE`` are backward-compatible aliases.
+"""
 
 import io
 import os
@@ -16,15 +24,27 @@ CONFIG_BUCKET = os.getenv("CONFIG_BUCKET", "config")
 
 
 def get_config_bucket():
-    """Return the MinIO bucket name for config uploads and thumbnails."""
+    """Return the bucket name for config uploads and thumbnails."""
     return CONFIG_BUCKET
 
 
 def get_minio_client():
-    """Create and return a MinIO client from environment variables."""
-    endpoint = os.getenv("MINIO_ENDPOINT", "minio:9000")
-    access_key = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-    secret_key = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+    """Create an S3 client. Prefer AWS_*; MINIO_* is a compatibility alias."""
+    endpoint = (
+        os.getenv("AWS_ENDPOINT_URL")
+        or os.getenv("MINIO_ENDPOINT")
+        or "http://aws-compatible-storage:7480"
+    )
+    access_key = (
+        os.getenv("AWS_ACCESS_KEY_ID")
+        or os.getenv("MINIO_ACCESS_KEY")
+        or "s4admin"
+    )
+    secret_key = (
+        os.getenv("AWS_SECRET_ACCESS_KEY")
+        or os.getenv("MINIO_SECRET_KEY")
+        or "s4secret"
+    )
     secure = os.getenv("MINIO_SECURE", "false").lower() == "true"
     # Minio() expects bare host:port; strip scheme if a full URL was provided
     parsed = urlparse(endpoint)

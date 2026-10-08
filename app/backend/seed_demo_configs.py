@@ -2,7 +2,7 @@
 
 Copies sample MP4s from the data bucket into CONFIG_BUCKET at uploads/<basename>,
 using the same filenames as in the data bucket (unique per demo). The RTSP row has no
-MinIO copy or thumbnail; it appears in the Source RTSP dropdown.
+object copy or thumbnail; it appears in the Source RTSP dropdown.
 """
 
 from __future__ import annotations
@@ -201,17 +201,19 @@ def _ping_minio(max_attempts: int = 15, delay_s: float = 2.0) -> None:
         except Exception as e:
             if attempt == max_attempts - 1:
                 raise RuntimeError(
-                    f"MinIO not reachable after {max_attempts} attempts: {e}"
+                    f"Object storage not reachable after {max_attempts} attempts: {e}"
                 ) from e
             log.warning(
-                f"MinIO not ready (attempt {attempt + 1}/{max_attempts}): {e}; retrying..."
+                f"Object storage not ready (attempt {attempt + 1}/{max_attempts}): {e}; retrying..."
             )
             time.sleep(delay_s)
 
 
 def insert_demo_configs() -> None:
     """Insert demo app_config rows; caller should invoke only when DB has no configs yet."""
-    data_bucket = os.getenv("MINIO_VIDEO_BUCKET", "data").strip() or "data"
+    data_bucket = (
+        os.getenv("VIDEO_BUCKET") or os.getenv("MINIO_VIDEO_BUCKET", "data")
+    ).strip() or "data"
     cfg_bucket = get_config_bucket()
     model_url = _default_model_url()
     # Each tuple: (served OVMS/Triton model id, video filename in data bucket, class entries).

@@ -1,5 +1,5 @@
 # Dockerfile for ppe-compliance-monitor-data
-# Uploads model and video files to MinIO (idempotent - skips if already exists)
+# Uploads model and video files to aws-compatible-storage (S4). Idempotent.
 #
 # Build context must be the ``app`` directory (see Makefile ``build-push-data``):
 #   podman build -f app/data-image/Dockerfile app
@@ -36,8 +36,11 @@ COPY data-image/export_models.py /tmp/export_models.py
 RUN pip install --no-cache-dir git+https://github.com/openai/CLIP.git && \
     python3 /tmp/export_models.py
 
-# Stage 3: Create uploader image with mc CLI
-FROM docker.io/minio/mc@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
+# Stage 3: UBI Python uploader (boto3). Do not ship minio/mc.
+FROM registry.redhat.io/ubi9/python-311:latest
+
+USER 0
+RUN pip install --no-cache-dir boto3
 
 WORKDIR /upload
 
@@ -49,11 +52,14 @@ COPY --from=exporter /exported-openvino/ /upload/models/
 # ONNX for Triton: triton/<name>/1/model.onnx; OpenVINO IR: ovms/<name>/1/
 COPY --from=exporter /exported-onnx/ /upload/models/
 COPY data-image/config/config.pbtxt /upload/triton-config/config.pbtxt
-COPY data-image/upload.sh /upload/upload.sh
-RUN chmod +x /upload/upload.sh
+COPY data-image/upload.py /upload/upload.py
+RUN chmod a+rX /upload/upload.py && chmod -R a+rX /upload
 
-ENV MINIO_ENDPOINT=http://minio:9000 \
-    MINIO_ACCESS_KEY=minioadmin \
-    MINIO_SECRET_KEY=minioadmin
+ENV HOME=/tmp \
+    AWS_ENDPOINT_URL=http://aws-compatible-storage:7480 \
+    AWS_ACCESS_KEY_ID=s4admin \
+    AWS_SECRET_ACCESS_KEY=s4secret \
+    AWS_DEFAULT_REGION=us-east-1
 
-ENTRYPOINT ["/bin/sh", "/upload/upload.sh"]
+USER 1001
+ENTRYPOINT ["python", "/upload/upload.py"]
