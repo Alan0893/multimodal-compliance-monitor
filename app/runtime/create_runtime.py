@@ -35,11 +35,8 @@ def load_config():
         "namespace": namespace,
         "runtime_type": os.getenv("RUNTIME_TYPE", "openvino").lower(),
         "deploy_enabled": os.getenv("DEPLOY_MODEL", "true").lower() == "true",
-        # MINIO_* is a backward-compatible alias of AWS_*.
-        "s3_access_key": os.getenv("AWS_ACCESS_KEY_ID")
-        or os.getenv("MINIO_ACCESS_KEY", "s4admin"),
-        "s3_secret_key": os.getenv("AWS_SECRET_ACCESS_KEY")
-        or os.getenv("MINIO_SECRET_KEY", "s4secret"),
+        "s3_access_key": os.getenv("AWS_ACCESS_KEY_ID") or "s4admin",
+        "s3_secret_key": os.getenv("AWS_SECRET_ACCESS_KEY") or "s4secret",
         "serving_runtime": os.getenv("SERVING_RUNTIME", f"{namespace}-deploy"),
         "create_serving_runtime": os.getenv("CREATE_SERVING_RUNTIME", "true").lower()
         == "true",
@@ -64,7 +61,7 @@ def load_config():
         "s3_bucket": os.getenv("S3_BUCKET", "models"),
         "s3_model_path": os.getenv("S3_MODEL_PATH", "ovms/ppe"),
         "s3_endpoint": os.getenv("AWS_ENDPOINT_URL")
-        or os.getenv("MINIO_ENDPOINT", "http://aws-compatible-storage:7480"),
+        or "http://aws-compatible-storage:7480",
         "model_version_to_deploy": os.getenv("MODEL_VERSION_TO_DEPLOY", ""),
         "replicas_min": int(os.getenv("REPLICAS_MIN", "1")),
         "replicas_max": int(os.getenv("REPLICAS_MAX", "1")),
@@ -180,9 +177,7 @@ def _extract_storage_info(api_base, target_version, version_id):
     """Extract storage URI and S3 endpoint from version metadata."""
     custom_props = target_version.get("customProperties", {})
     storage_uri = custom_props.get("storage_uri", {}).get("string_value", "")
-    s3_endpoint = custom_props.get("s3_endpoint", {}).get(
-        "string_value", ""
-    ) or custom_props.get("minio_endpoint", {}).get("string_value", "")
+    s3_endpoint = custom_props.get("s3_endpoint", {}).get("string_value", "")
 
     if not storage_uri:
         artifacts_response = requests.get(
