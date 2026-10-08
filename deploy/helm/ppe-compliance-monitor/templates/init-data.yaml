@@ -21,12 +21,9 @@ spec:
           image: "{{ .Values.global.imageRegistry }}/{{ .Values.data.image.repository }}:{{ .Values.data.image.tag }}"
           imagePullPolicy: {{ .Values.data.image.pullPolicy }}
           env:
-            - name: MINIO_ENDPOINT
-              value: "http://{{ .Values.minio.secret.host }}:{{ .Values.minio.secret.port }}"
-            - name: MINIO_ACCESS_KEY
-              value: {{ .Values.minio.secret.user | quote }}
-            - name: MINIO_SECRET_KEY
-              value: {{ .Values.minio.secret.password | quote }}
+            {{- include "ppe-compliance-monitor.s3Env" . | nindent 12 }}
+            - name: BUCKETS
+              value: {{ join "," .Values.awsCompatibleStorageBuckets.names | quote }}
             - name: RUNTIME_TYPE
               value: {{ .Values.modelServing.runtimeType | quote }}
             {{- if eq .Values.modelServing.runtimeType "openvino" }}

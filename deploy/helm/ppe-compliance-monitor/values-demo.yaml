@@ -1,0 +1,9 @@
+# Demo overlay only. Do not use these keys on a shared cluster.
+# Cluster installs should copy this to values-secrets.yaml (gitignored) or
+# --set s3Credentials.* from a sealed secret / ExternalSecret.
+s3Credentials:
+  create: true
+  accessKeyId: s4admin
+  secretAccessKey: s4secret
+  uiUsername: admin
+  uiPassword: changeme

@@ -141,7 +141,7 @@ spec:
             - name: DEPLOY_MODEL
               value: "true"
             - name: S3_BUCKET
-              value: {{ index .Values.minio.bucketCreation.buckets 0 | quote }}
+              value: {{ .Values.storage.model.bucket | quote }}
             {{- if or (and (eq .Values.modelServing.runtimeType "openvino") .Values.modelServing.openvino.multiModel) (and (eq .Values.modelServing.runtimeType "kserve") .Values.modelServing.kserve.multiModel) }}
             - name: MULTI_MODEL_SERVING
               value: "true"
@@ -158,12 +158,7 @@ spec:
             {{- else }}
               value: {{ .Values.modelServing.openvino.modelPath | quote }}
             {{- end }}
-            - name: MINIO_ENDPOINT
-              value: "http://{{ .Values.minio.secret.host }}:{{ .Values.minio.secret.port }}"
-            - name: MINIO_ACCESS_KEY
-              value: {{ .Values.minio.secret.user | quote }}
-            - name: MINIO_SECRET_KEY
-              value: {{ .Values.minio.secret.password | quote }}
+            {{- include "ppe-compliance-monitor.s3Env" . | nindent 12 }}
             - name: MODEL_NAME
               value: {{ .Values.runtimeDeployer.modelName | default "ppe" | quote }}
             - name: MODEL_VERSION
