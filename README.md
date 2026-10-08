@@ -44,7 +44,7 @@ This AI quickstart provides a complete multimodal monitoring solution that combi
 **Key capabilities:**
 
 - **Real-time analysis**: Process live RTSP streams or MP4 files with per-source configuration and model selection
-- **Persistent storage**: Upload and manage video sources backed by MinIO object storage and PostgreSQL database
+- **Persistent storage**: Upload and manage video sources backed by aws-compatible-storage (S4) and PostgreSQL database
 - **Visual monitoring**: View detection results, overlays, and automated safety summaries through a React dashboard
 - **Conversational insights**: Query the system using an OpenAI-compatible LLM with LangGraph/LangChain and optional SQL-backed tools
 - **Flexible deployment**: Run locally with Podman Compose, bare-metal development, or deploy to Kubernetes/OpenShift with Triton/KServe or OpenVINO Model Server
@@ -74,14 +74,14 @@ Static overview (SVG): [`docs/images/architecture.svg`](docs/images/architecture
 | **Tracking** | BoxMOT (BoostTrack++) | Multi-object tracking |
 | **LLM** | OpenAI-compatible API, LangGraph / LangChain | Chat; optional read-only **postgres-mcp** SQL tools |
 | **Observability** | Arize Phoenix (optional) | Tracing |
-| **Storage** | MinIO | Models, videos, uploads, thumbnails, config objects |
+| **Storage** | aws-compatible-storage (S4) | Models, videos, uploads, thumbnails, config objects |
 | **Database** | PostgreSQL | Configs, classes, tracks, observations |
-| **Prep / seed** | yolo-model-prep (local), data-loader (init) | Export/build model repo from `app/models/*.pt`; seed MinIO |
-| **Annotation (optional)** | Label Studio | Same PostgreSQL + MinIO stack |
+| **Prep / seed** | yolo-model-prep (local), data-loader (init) | Export/build model repo from `app/models/*.pt`; seed S4 |
+| **Annotation (optional)** | Label Studio | Same PostgreSQL database |
 
 ### Video upload workflow
 
-[![Video upload workflow diagram showing the process from user upload through MinIO storage to database persistence](docs/images/video-upload-workflow.png)](docs/images/video-upload-workflow-large.png)
+[![Video upload workflow diagram showing the process from user upload through object storage to database persistence](docs/images/video-upload-workflow.png)](docs/images/video-upload-workflow-large.png)
 
 ### Application workflow
 
@@ -89,22 +89,22 @@ Static overview (SVG): [`docs/images/architecture.svg`](docs/images/architecture
 
 ### Components
 
-- **Backend** (Flask, OpenCV): Video decode, MJPEG output, and drawn overlays; inference over gRPC to OpenVINO Model Server (`ovmsclient`, local/CPU) or Triton via `tritonclient` (KServe / GPU path); multi-object tracking with BoxMOT (BoostTrack++); PostgreSQL for app configs, classes, tracks, and observations; MinIO for object storage; LLM chat with LangGraph / LangChain (OpenAI-compatible API) and optional read-only postgres-mcp for SQL tools; optional Arize Phoenix for tracing
+- **Backend** (Flask, OpenCV): Video decode, MJPEG output, and drawn overlays; inference over gRPC to OpenVINO Model Server (`ovmsclient`, local/CPU) or Triton via `tritonclient` (KServe / GPU path); multi-object tracking with BoxMOT (BoostTrack++); PostgreSQL for app configs, classes, tracks, and observations; aws-compatible-storage (S4) for object storage; LLM chat with LangGraph / LangChain (OpenAI-compatible API) and optional read-only postgres-mcp for SQL tools; optional Arize Phoenix for tracing
 - **Frontend** (React, React Router, Axios): Dashboard, source selection (RTSP / MP4 thumbnails), configuration page, and chat with Markdown rendering
 - **OpenVINO Model Server (OVMS)**: Model serving runtime; local stack also runs yolo-model-prep (Ultralytics-based export) to build the model repo from `app/models/*.pt` before OVMS starts
-- **MinIO**: S3-compatible object storage for models, videos, uploads, and config-related objects
+- **aws-compatible-storage (S4)**: S3-compatible object storage for models, videos, uploads, and config-related objects
 - **PostgreSQL**: Durable storage for multi-source configs and tracking data
-- **Data loader**: Init container that seeds model and video objects into MinIO
-- **Label Studio** (optional): Annotation UI using the same PostgreSQL and MinIO stack
+- **Data loader**: Job that seeds model and video objects into S4
+- **Label Studio** (optional): Annotation UI using the same PostgreSQL database
 
 ### Storage strategy
 
-All models and video files are stored in MinIO rather than baked into container images:
+All models and video files are stored in aws-compatible-storage (S4) rather than baked into container images:
 
 | Deployment | Storage method |
 |------------|----------------|
-| OpenShift/K8s | Files downloaded from MinIO to PVC by init container |
-| Local (Podman) | Files downloaded from MinIO at runtime via Python client |
+| OpenShift/K8s | Sample video downloaded from S4 by the video-stream init container |
+| Local (Podman) | Files downloaded from S4 at runtime via Python client |
 
 ## Requirements
 
@@ -188,7 +188,7 @@ make build
 # Push to registry
 make push
 
-# Build and push data loader image (contains model/video for MinIO upload)
+# Build and push data loader image (contains model/video for S4 upload)
 make build-push-data
 ```
 
@@ -214,10 +214,10 @@ make deploy-openvino-labelstudio NAMESPACE=<your-namespace>
 
 ### Deployment workflow
 
-1. **MinIO** starts (from `ai-architecture-charts` dependency)
-2. **Backend Pod Init Container 1** (`upload-data`): Uploads model/video to MinIO
-3. **Backend Pod Init Container 2** (`download-data`): Downloads files from MinIO to PVC
-4. **Backend** starts with `MINIO_ENABLED=false`, reads from PVC paths
+1. **aws-compatible-storage (S4)** starts (from `ai-architecture-charts` dependency)
+2. **Bucket bootstrap Job** creates `models`, `data`, and `config`
+3. **init-data Job** uploads model and sample video objects
+4. **video-stream** init container downloads the sample MP4; backend uses the S3 API
 5. **Frontend** connects to backend API
 
 ### Helm values
@@ -227,10 +227,13 @@ Override settings (from the repository root; chart path matches **`HELM_CHART`**
 ```bash
 export HELM_CHART=$(grep '^HELM_CHART ?=' Makefile | sed 's/^HELM_CHART ?= //')
 helm upgrade multimodal-monitoring "$HELM_CHART" \
+  -f "$HELM_CHART/values-demo.yaml" \
   --set frontend.apiUrl=/api \
   --set backend.corsOrigins=http://your-frontend-host \
   --set storage.size=2Gi
 ```
+
+S3 credentials are not in `values.yaml`. `make deploy` applies `values-demo.yaml` (local demo keys) unless `values-secrets.yaml` exists. That overlay creates Secret `aws-compatible-storage-credentials`. Copy `values-demo.yaml` to `values-secrets.yaml` and replace the keys for a shared cluster.
 
 OpenShift-specific options are included in the chart:
 - Frontend Route: `openshift.route.enabled` and optional `openshift.route.host`
@@ -257,11 +260,11 @@ make local-build-up
 ```
 
 This starts:
-1. **MinIO** - Object storage (ports 9000, 9001)
-2. **data-loader** - Uploads model/video to MinIO (runs once)
-3. **backend** - Flask API with `MINIO_ENABLED=true` (port 8888)
+1. **aws-compatible-storage (S4)** - Object storage (UI port 5000, S3 API port 7480)
+2. **data-loader** - Uploads model/video to S4 (runs once)
+3. **backend** - Flask API (port 8888)
 4. **frontend** - React app (port 3000)
-5. **Label Studio** - Annotation UI backed by the same PostgreSQL + MinIO stack (port 8082)
+5. **Label Studio** - Annotation UI backed by PostgreSQL (port 8082)
 
 #### Run without rebuild
 
@@ -279,7 +282,8 @@ make local-down
 
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8888/api/
-- MinIO Console: http://localhost:9001 (login: `minioadmin` / `minioadmin`)
+- Object storage UI: http://localhost:5000 (local demo login: `admin` / `changeme`)
+- S3 API: http://localhost:7480 (local demo keys: `s4admin` / `s4secret`)
 - Label Studio: http://localhost:8082
 
 ### Local development (no containers)
@@ -348,7 +352,8 @@ curl -X POST http://localhost:8888/ask_question \
 
 - [BoxMOT](https://github.com/mikel-brostrom/boxmot) - Multi-object tracking library
 - [Arize Phoenix](https://docs.arize.com/phoenix/) - LLM observability and tracing
-- [MinIO](https://min.io/) - S3-compatible object storage
+- [aws-compatible-storage](https://github.com/rh-ai-quickstart/ai-architecture-charts/tree/main/aws-compatible-storage) - Helm chart for S4
+- [S4](https://github.com/rh-aiservices-bu/s4) - S3-compatible object storage runtime
 
 ## Tags
 
