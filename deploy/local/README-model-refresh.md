@@ -203,7 +203,7 @@ Updates use the same JSON shape on **`PUT /api/config/<id>`**. Adjust **`video_s
 ### YOLOv8n (`yolov8n.pt`) and `cars.mp4` (COCO)
 
 - **Weights:** keep **`app/models/yolov8n.pt`** and import with **`python deploy/local/import_model_weight.py yolov8n.pt`** (or rely on a full stack build that runs **`yolo-model-prep`** over all **`app/models/*.pt`**). In the Config dialog, **Model name** must be **`yolov8n`** (the file stem).
-- **Video:** **`app/data/cars.mp4`** is included in the data-loader image and uploaded to S4 by **`app/data-image/upload.py`** as **`data/cars.mp4`**. Use **`video_source`**: **`s3://data/cars.mp4`** for playback from object storage.
+- **Video:** **`app/data/cars.mp4`** is included in the data-loader image and uploaded to S4 by **`app/data-image/upload.sh`** as **`data/cars.mp4`**. Use **`video_source`**: **`s3://data/cars.mp4`** for playback from object storage.
 - **Classes:** YOLOv8n uses the **80-class COCO** output order. Every index **`"0"`**–**`"79"`** should appear in **`classes`** so labels match the model head. The example below is tuned for a **vehicle-focused** demo on **`cars.mp4`**: only **`car`** (index **`2`**) is **`trackable`** and **`include_in_counts`: `true`**; all other classes remain mapped for correct post-processing but are excluded from counts and overlay-related aggregation. Change **`trackable`** / **`include_in_counts`** (e.g. set **`person`** to trackable) if you want people-tracking or more classes visible.
 
 Use this shape for **`POST /api/config`** (merge the **`classes`** object below into the body). Top-level fields:

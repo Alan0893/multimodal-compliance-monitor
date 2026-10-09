@@ -20,7 +20,7 @@ WORKDIR /extract
 COPY data/combined-video-no-gap-rooftop.mp4.7z.* ./data/
 RUN cd data && 7z x combined-video-no-gap-rooftop.mp4.7z.001
 
-# Sample MP4 for bird demo (same bucket as rooftop clip; see upload.py)
+# Sample MP4 for bird demo (same bucket as rooftop clip; see upload.sh)
 COPY data/bluejayclear.mp4 ./data/
 
 COPY data/cars.mp4 ./data/
@@ -36,11 +36,13 @@ COPY data-image/export_models.py /tmp/export_models.py
 RUN pip install --no-cache-dir git+https://github.com/openai/CLIP.git && \
     python3 /tmp/export_models.py
 
-# Stage 3: UBI Python uploader (boto3), publicly pullable without registry login.
-FROM registry.access.redhat.com/ubi9/python-311:1-77
+# Stage 3: AWS CLI uploader, publicly pullable without registry login.
+FROM docker.io/library/alpine@sha256:6baf43584bcb78f2e5847d1de515f23499913ac9f12bdf834811a3145eb11ca1
 
-USER 0
-RUN pip install --no-cache-dir boto3
+RUN apk add --no-cache aws-cli && \
+    mkdir -p /etc/aws && \
+    AWS_CONFIG_FILE=/etc/aws/config aws configure set default.s3.addressing_style path && \
+    chmod a+r /etc/aws/config
 
 WORKDIR /upload
 
@@ -52,14 +54,14 @@ COPY --from=exporter /exported-openvino/ /upload/models/
 # ONNX for Triton: triton/<name>/1/model.onnx; OpenVINO IR: ovms/<name>/1/
 COPY --from=exporter /exported-onnx/ /upload/models/
 COPY data-image/config/config.pbtxt /upload/triton-config/config.pbtxt
-COPY data-image/upload.py /upload/upload.py
-RUN chmod a+rX /upload/upload.py && chmod -R a+rX /upload
+COPY data-image/upload.sh /upload/upload.sh
+RUN chmod a+rx /upload/upload.sh && chmod -R a+rX /upload
 
 ENV HOME=/tmp \
+    AWS_CONFIG_FILE=/etc/aws/config \
     AWS_ENDPOINT_URL=http://aws-compatible-storage:7480 \
     AWS_ACCESS_KEY_ID=s4admin \
     AWS_SECRET_ACCESS_KEY=s4secret \
     AWS_DEFAULT_REGION=us-east-1
 
-USER 1001
-ENTRYPOINT ["python", "/upload/upload.py"]
+ENTRYPOINT ["/bin/sh", "/upload/upload.sh"]
