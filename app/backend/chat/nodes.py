@@ -78,8 +78,9 @@ def make_router_node(llm: ChatOpenAI):
     async def router_node(state: ChatState) -> dict:
         prompt = build_router_prompt(state.get("classes_info"))
         messages = [
-            SystemMessage(content=prompt),
-            SystemMessage(content=f"Current visual context:\n{state['context']}"),
+            SystemMessage(
+                content=f"{prompt}\n\nCurrent visual context:\n{state['context']}"
+            ),
             HumanMessage(content=state["question"]),
         ]
         decision: RouteDecision = await structured_llm.ainvoke(messages)
@@ -95,8 +96,9 @@ def make_context_answer_node(llm: ChatOpenAI):
     async def context_answer_node(state: ChatState) -> dict:
         prompt = build_context_answer_prompt(state.get("classes_info"))
         messages = [
-            SystemMessage(content=prompt),
-            SystemMessage(content=f"The user sees right now:\n{state['context']}"),
+            SystemMessage(
+                content=f"{prompt}\n\nThe user sees right now:\n{state['context']}"
+            ),
             HumanMessage(content=f"User question: {state['question']}"),
         ]
         response = await llm.ainvoke(messages)
