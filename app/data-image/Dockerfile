@@ -1,5 +1,5 @@
 # Dockerfile for ppe-compliance-monitor-data
-# Uploads model and video files to aws-compatible-storage (S4). Idempotent.
+# Uploads model and video files to aws-compatible-storage. Idempotent.
 #
 # Build context must be the ``app`` directory (see Makefile ``build-push-data``):
 #   podman build -f app/data-image/Dockerfile app
