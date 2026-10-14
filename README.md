@@ -44,7 +44,7 @@ This AI quickstart provides a complete multimodal monitoring solution that combi
 **Key capabilities:**
 
 - **Real-time analysis**: Process live RTSP streams or MP4 files with per-source configuration and model selection
-- **Persistent storage**: Upload and manage video sources backed by aws-compatible-storage (S4) and PostgreSQL database
+- **Persistent storage**: Upload and manage video sources backed by aws-compatible-storage and PostgreSQL database
 - **Visual monitoring**: View detection results, overlays, and automated safety summaries through a React dashboard
 - **Conversational insights**: Query the system using an OpenAI-compatible LLM with LangGraph/LangChain and optional SQL-backed tools
 - **Flexible deployment**: Run locally with Podman Compose, bare-metal development, or deploy to Kubernetes/OpenShift with Triton/KServe or OpenVINO Model Server
@@ -74,9 +74,9 @@ Static overview (SVG): [`docs/images/architecture.svg`](docs/images/architecture
 | **Tracking** | BoxMOT (BoostTrack++) | Multi-object tracking |
 | **LLM** | OpenAI-compatible API, LangGraph / LangChain | Chat; optional read-only **postgres-mcp** SQL tools |
 | **Observability** | Arize Phoenix (optional) | Tracing |
-| **Storage** | aws-compatible-storage (S4) | Models, videos, uploads, thumbnails, config objects |
+| **Storage** | aws-compatible-storage | Models, videos, uploads, thumbnails, config objects |
 | **Database** | PostgreSQL | Configs, classes, tracks, observations |
-| **Prep / seed** | yolo-model-prep (local), data-loader (init) | Export/build model repo from `app/models/*.pt`; seed S4 |
+| **Prep / seed** | yolo-model-prep (local), data-loader (init) | Export/build model repo from `app/models/*.pt`; seed S3-compatible storage |
 | **Annotation (optional)** | Label Studio | Same PostgreSQL database |
 
 ### Video upload workflow
@@ -89,22 +89,22 @@ Static overview (SVG): [`docs/images/architecture.svg`](docs/images/architecture
 
 ### Components
 
-- **Backend** (Flask, OpenCV): Video decode, MJPEG output, and drawn overlays; inference over gRPC to OpenVINO Model Server (`ovmsclient`, local/CPU) or Triton via `tritonclient` (KServe / GPU path); multi-object tracking with BoxMOT (BoostTrack++); PostgreSQL for app configs, classes, tracks, and observations; aws-compatible-storage (S4) for object storage; LLM chat with LangGraph / LangChain (OpenAI-compatible API) and optional read-only postgres-mcp for SQL tools; optional Arize Phoenix for tracing
+- **Backend** (Flask, OpenCV): Video decode, MJPEG output, and drawn overlays; inference over gRPC to OpenVINO Model Server (`ovmsclient`, local/CPU) or Triton via `tritonclient` (KServe / GPU path); multi-object tracking with BoxMOT (BoostTrack++); PostgreSQL for app configs, classes, tracks, and observations; aws-compatible-storage for object storage; LLM chat with LangGraph / LangChain (OpenAI-compatible API) and optional read-only postgres-mcp for SQL tools; optional Arize Phoenix for tracing
 - **Frontend** (React, React Router, Axios): Dashboard, source selection (RTSP / MP4 thumbnails), configuration page, and chat with Markdown rendering
 - **OpenVINO Model Server (OVMS)**: Model serving runtime; local stack also runs yolo-model-prep (Ultralytics-based export) to build the model repo from `app/models/*.pt` before OVMS starts
-- **aws-compatible-storage (S4)**: S3-compatible object storage for models, videos, uploads, and config-related objects
+- **aws-compatible-storage**: S3-compatible object storage for models, videos, uploads, and config-related objects
 - **PostgreSQL**: Durable storage for multi-source configs and tracking data
-- **Data loader**: Job that seeds model and video objects into S4
+- **Data loader**: Job that seeds model and video objects into S3-compatible storage
 - **Label Studio** (optional): Annotation UI using the same PostgreSQL database
 
 ### Storage strategy
 
-All models and video files are stored in aws-compatible-storage (S4) rather than baked into container images:
+All models and video files are stored in aws-compatible-storage rather than baked into container images:
 
 | Deployment | Storage method |
 |------------|----------------|
-| OpenShift/K8s | Sample video downloaded from S4 by the video-stream init container |
-| Local (Podman) | Files downloaded from S4 at runtime via Python client |
+| OpenShift/K8s | Sample video downloaded from S3-compatible storage by the video-stream init container |
+| Local (Podman) | Files downloaded from S3-compatible storage at runtime via Python client |
 
 ## Requirements
 
@@ -188,7 +188,7 @@ make build
 # Push to registry
 make push
 
-# Build and push data loader image (contains model/video for S4 upload)
+# Build and push data loader image (contains model/video for S3-compatible storage upload)
 make build-push-data
 ```
 
@@ -214,7 +214,7 @@ make deploy-openvino-labelstudio NAMESPACE=<your-namespace>
 
 ### Deployment workflow
 
-1. **aws-compatible-storage (S4)** starts (from `ai-architecture-charts` dependency)
+1. **aws-compatible-storage** starts (from `ai-architecture-charts` dependency)
 2. **Bucket bootstrap Job** creates `models`, `data`, and `config`
 3. **init-data Job** uploads model and sample video objects
 4. **video-stream** init container downloads the sample MP4; backend uses the S3 API
@@ -260,8 +260,8 @@ make local-build-up
 ```
 
 This starts:
-1. **aws-compatible-storage (S4)** - Object storage (UI port 5000, S3 API port 7480)
-2. **data-loader** - Uploads model/video to S4 (runs once)
+1. **aws-compatible-storage** - Object storage (UI port 5000, S3 API port 7480)
+2. **data-loader** - Uploads model/video to S3-compatible storage (runs once)
 3. **backend** - Flask API (port 8888)
 4. **frontend** - React app (port 3000)
 5. **Label Studio** - Annotation UI backed by PostgreSQL (port 8082)
@@ -359,8 +359,7 @@ curl -X POST http://localhost:8888/ask_question \
 
 - [BoxMOT](https://github.com/mikel-brostrom/boxmot) - Multi-object tracking library
 - [Arize Phoenix](https://docs.arize.com/phoenix/) - LLM observability and tracing
-- [aws-compatible-storage](https://github.com/rh-ai-quickstart/ai-architecture-charts/tree/main/aws-compatible-storage) - Helm chart for S4
-- [S4](https://github.com/rh-aiservices-bu/s4) - S3-compatible object storage runtime
+- [aws-compatible-storage](https://github.com/rh-ai-quickstart/ai-architecture-charts/tree/main/aws-compatible-storage) - Helm chart for S3-compatible object storage
 
 ## Tags
 

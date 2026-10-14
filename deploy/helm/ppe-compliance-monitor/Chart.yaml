@@ -8,7 +8,7 @@ appVersion: "1.0.0"
 dependencies:
   # External dependencies from remote repositories
   - name: aws-compatible-storage
-    version: 0.1.0
+    version: 0.2.0
     repository: https://rh-ai-quickstart.github.io/ai-architecture-charts
     condition: aws-compatible-storage.enabled
   - name: label-studio

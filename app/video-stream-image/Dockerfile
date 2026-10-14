@@ -1,4 +1,4 @@
-# Downloads an MP4 from aws-compatible-storage (S4) and publishes it to MediaMTX.
+# Downloads an MP4 from aws-compatible-storage and publishes it to MediaMTX.
 FROM docker.io/library/alpine@sha256:6baf43584bcb78f2e5847d1de515f23499913ac9f12bdf834811a3145eb11ca1
 
 RUN apk add --no-cache ffmpeg aws-cli netcat-openbsd && \

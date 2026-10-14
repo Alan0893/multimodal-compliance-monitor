@@ -18,12 +18,12 @@ aws_s3api() {
 	aws --endpoint-url "$AWS_ENDPOINT_URL" s3api "$@"
 }
 
-echo "Waiting for S4 to be ready..."
+echo "Waiting for S3-compatible storage to be ready..."
 until aws_s3 ls >/dev/null 2>&1; do
-	echo "S4 not ready, retrying in 2 seconds..."
+	echo "S3-compatible storage not ready, retrying in 2 seconds..."
 	sleep 2
 done
-echo "S4 connection established"
+echo "S3-compatible storage connection established"
 
 echo "Creating buckets..."
 for bucket in models data config; do
@@ -84,7 +84,7 @@ upload_tree() {
 	aws_s3 cp "$local_dir" "s3://${bucket}/${prefix}/" --recursive
 }
 
-# OVMS assets must reach S4 whenever the data image includes them. This is not
+# OVMS assets must reach object storage whenever the data image includes them. This is not
 # gated on RUNTIME_TYPE because an OVMS InferenceService may use the KServe
 # storage prefix even when the init Job runs with runtimeType=kserve.
 if [ -d /upload/models/ovms ]; then
@@ -101,8 +101,8 @@ if [ -d /upload/models/ovms ]; then
 			echo "OpenVINO ovms/${base} already present, skipping"
 		fi
 	done
-	if [ -n "${OVMS_CONFIG_NIREQ:-}" ] || \
-		[ -n "${OVMS_CONFIG_PLUGIN_CONFIG:-}" ] || \
+	if [ -n "${OVMS_CONFIG_NIREQ:-}" ] ||
+		[ -n "${OVMS_CONFIG_PLUGIN_CONFIG:-}" ] ||
 		[ -n "${OVMS_CONFIG_SHAPE:-}" ]; then
 		regen_ovms_config
 	fi
@@ -126,7 +126,7 @@ if [ "$RUNTIME_TYPE" = "kserve" ]; then
 			echo "Triton ONNX ${stem} already present, skipping"
 		fi
 	done
-	if [ -f /upload/triton-config/config.pbtxt ] && \
+	if [ -f /upload/triton-config/config.pbtxt ] &&
 		[ -f /upload/models/triton/ppe/1/model.onnx ]; then
 		echo "Uploading Triton config for triton/ppe/..."
 		aws_s3 cp /upload/triton-config/config.pbtxt s3://models/triton/ppe/config.pbtxt
@@ -163,7 +163,7 @@ done
 
 echo "=== Data upload complete ==="
 echo ""
-echo "Files in S4:"
+echo "Files in object storage:"
 echo "--- models bucket ---"
 aws_s3 ls s3://models/
 echo "--- data bucket ---"

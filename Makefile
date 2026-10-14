@@ -14,6 +14,7 @@ help:
 	@echo "  build-runtime - Build runtime deployer container image"
 	@echo "  build-push-data - Build and push data container image (video + models)"
 	@echo "  deploy     - Deploy to OpenShift with OpenVINO CPU runtime (default)"
+	@echo "  deploy-demo - Deploy with local demo storage credentials"
 	@echo "  deploy-cpu - Deploy with CPU runtime (OpenVINO Model Server)"
 	@echo "  deploy-gpu - Deploy with GPU runtime (kserve/Triton)"
 	@echo "  build-jupyter-training - Build Jupyter training image (notebook under ~/work/training)"
@@ -66,6 +67,7 @@ RUNTIME_TYPE ?= openvino
 LABEL_STUDIO_ENABLED ?=
 EVAL_FEATURE ?= chat
 EVAL_DATASET ?= ppe
+DEPLOY_VALUES_FILE ?=
 
 helm-deps:
 	@echo "Updating Helm chart dependencies..."
@@ -207,7 +209,9 @@ deploy: helm-deps check-openai-env
 		--set openai.apiEndpoint=$$OPENAI_API_ENDPOINT \
 		--set openai.model=$$OPENAI_MODEL \
 		--set openai.temperature=$$OPENAI_TEMPERATURE"; \
-	if [ -f $(HELM_CHART)/values-secrets.yaml ]; then \
+	if [ -n "$(DEPLOY_VALUES_FILE)" ]; then \
+		helm_args="$$helm_args -f $(DEPLOY_VALUES_FILE)"; \
+	elif [ -f $(HELM_CHART)/values-secrets.yaml ]; then \
 		helm_args="$$helm_args -f $(HELM_CHART)/values-secrets.yaml"; \
 	else \
 		echo "ERROR: $(HELM_CHART)/values-secrets.yaml not found."; \
@@ -218,36 +222,8 @@ deploy: helm-deps check-openai-env
 	helm upgrade --install $(HELM_RELEASE) $(HELM_CHART) \
 		--namespace $(NAMESPACE) --create-namespace $$helm_args
 
-deploy-demo: helm-deps check-openai-env ## Deploy with local demo S3 credentials (values-demo.yaml)
-	@. ./.env; \
-	domain=$$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || true); \
-	if [ -n "$(NAMESPACE)" ]; then oc new-project "$(NAMESPACE)" --display-name="$(NAMESPACE)" >/dev/null 2>&1 || oc project "$(NAMESPACE)"; fi; \
-	if [ -n "$$domain" ]; then \
-		host="$(HELM_RELEASE)-$(NAMESPACE).$$domain"; \
-		ls_host="$(HELM_RELEASE)-ls-$(NAMESPACE).$$domain"; \
-	else \
-		host=""; \
-		ls_host=""; \
-	fi; \
-	helm_args="--set global.imageRegistry=$(IMAGE_REGISTRY) \
-		--set jupyter-training.imageRegistry=$(IMAGE_REGISTRY) \
-		--set backend.image.tag=$(IMAGE_TAG) \
-		--set frontend.image.tag=$(IMAGE_TAG) \
-		--set data.image.tag=$(IMAGE_TAG) \
-		--set eval.image.tag=$(IMAGE_TAG) \
-		--set runtimeDeployer.image.tag=$(IMAGE_TAG) \
-		--set jupyter-training.image.tag=$(IMAGE_TAG) \
-		--set modelServing.runtimeType=$(RUNTIME_TYPE) \
-		$(if $(strip $(LABEL_STUDIO_ENABLED)),--set labelStudio.enabled=$(LABEL_STUDIO_ENABLED),) \
-		$${host:+--set openshift.sharedHost=$$host} \
-		$${ls_host:+--set labelStudio.route.host=$$ls_host} \
-		--set openai.apiToken=$$OPENAI_API_TOKEN \
-		--set openai.apiEndpoint=$$OPENAI_API_ENDPOINT \
-		--set openai.model=$$OPENAI_MODEL \
-		--set openai.temperature=$$OPENAI_TEMPERATURE \
-		-f $(HELM_CHART)/values-demo.yaml"; \
-	helm upgrade --install $(HELM_RELEASE) $(HELM_CHART) \
-		--namespace $(NAMESPACE) --create-namespace $$helm_args
+deploy-demo: ## Deploy with local demo S3 credentials (values-demo.yaml)
+	$(MAKE) deploy DEPLOY_VALUES_FILE=$(HELM_CHART)/values-demo.yaml
 
 deploy-gpu: ## Deploy with GPU runtime (kserve/Triton)
 	$(MAKE) deploy RUNTIME_TYPE=kserve
@@ -308,13 +284,13 @@ kill-ports: ## Kill processes using required ports
 	else \
 		fuser -k 7480/tcp 2>/dev/null || true; \
 	fi
-	@echo "   ✓ S4 S3 API 7480 killed"
+	@echo "   ✓ S3 API 7480 killed"
 	@if [ "$$(uname)" = "Darwin" ]; then \
 		lsof -ti :5000 | xargs kill -9 2>/dev/null || true; \
 	else \
 		fuser -k 5000/tcp 2>/dev/null || true; \
 	fi
-	@echo "   ✓ S4 UI 5000 killed"
+	@echo "   ✓ Storage UI 5000 killed"
 	@if [ "$$(uname)" = "Darwin" ]; then \
 		lsof -ti :5432 | xargs kill -9 2>/dev/null || true; \
 	else \

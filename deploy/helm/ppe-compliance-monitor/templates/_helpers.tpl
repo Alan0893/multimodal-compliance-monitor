@@ -18,18 +18,8 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" }}
 {{- end -}}
 
-{{/*
-Parent copies of the aws-compatible-storage helpers.
-
-Helm named templates are global, so these helpers are also called by the subchart.
-Select the storage values first when called from the parent. The application's
-fullnameOverride must never override the storage Service name.
-*/}}
-{{- define "aws-compatible-storage.fullname" -}}
-{{- $storage := .Values -}}
-{{- if hasKey .Values "aws-compatible-storage" -}}
-{{- $storage = index .Values "aws-compatible-storage" | default dict -}}
-{{- end -}}
+{{- define "ppe-compliance-monitor.storageFullname" -}}
+{{- $storage := index .Values "aws-compatible-storage" | default dict -}}
 {{- if $storage.fullnameOverride -}}
 {{- $storage.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
@@ -42,25 +32,14 @@ fullnameOverride must never override the storage Service name.
 {{- end -}}
 {{- end -}}
 
-{{- define "aws-compatible-storage.secretName" -}}
-{{- $storage := .Values -}}
-{{- if hasKey .Values "aws-compatible-storage" -}}
-{{- $storage = index .Values "aws-compatible-storage" | default dict -}}
-{{- end -}}
+{{- define "ppe-compliance-monitor.storageSecretName" -}}
+{{- $storage := index .Values "aws-compatible-storage" | default dict -}}
 {{- $s3 := $storage.s3 | default dict -}}
 {{- if $s3.existingSecret -}}
 {{- $s3.existingSecret -}}
 {{- else -}}
-{{- printf "%s-credentials" (include "aws-compatible-storage.fullname" .) -}}
+{{- printf "%s-credentials" (include "ppe-compliance-monitor.storageFullname" .) -}}
 {{- end -}}
-{{- end -}}
-
-{{- define "aws-compatible-storage.apiPort" -}}
-7480
-{{- end -}}
-
-{{- define "aws-compatible-storage.uiPort" -}}
-5000
 {{- end -}}
 
 {{- define "ppe-compliance-monitor.s3Env" -}}
@@ -69,15 +48,15 @@ fullnameOverride must never override the storage Service name.
 - name: AWS_ACCESS_KEY_ID
   valueFrom:
     secretKeyRef:
-      name: {{ include "aws-compatible-storage.secretName" . }}
+      name: {{ include "ppe-compliance-monitor.storageSecretName" . }}
       key: AWS_ACCESS_KEY_ID
 - name: AWS_SECRET_ACCESS_KEY
   valueFrom:
     secretKeyRef:
-      name: {{ include "aws-compatible-storage.secretName" . }}
+      name: {{ include "ppe-compliance-monitor.storageSecretName" . }}
       key: AWS_SECRET_ACCESS_KEY
 - name: AWS_ENDPOINT_URL
-  value: {{ printf "http://%s:%s" (include "aws-compatible-storage.fullname" .) (include "aws-compatible-storage.apiPort" .) | quote }}
+  value: {{ printf "http://%s:%v" (include "ppe-compliance-monitor.storageFullname" .) $storage.service.s3Port | quote }}
 - name: AWS_DEFAULT_REGION
   value: {{ $s3.region | default "us-east-1" | quote }}
 {{- end -}}

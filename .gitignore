@@ -58,6 +58,7 @@ app/data/uploads/
 data/config/
 deploy/helm/ppe-compliance-monitor/charts/label-studio-0.1.0.tgz
 deploy/helm/ppe-compliance-monitor/charts/jupyter-training-0.1.0.tgz
+deploy/helm/ppe-compliance-monitor/charts/aws-compatible-storage-0.1.0.tgz
 
 # Eval prediction results (generated per run)
 app/evals/preds/*

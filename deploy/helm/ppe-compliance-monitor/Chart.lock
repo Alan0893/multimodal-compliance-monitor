@@ -1,12 +1,12 @@
 dependencies:
 - name: aws-compatible-storage
   repository: https://rh-ai-quickstart.github.io/ai-architecture-charts
-  version: 0.1.0
+  version: 0.2.0
 - name: label-studio
   repository: file://../label-studio
   version: 0.1.0
 - name: jupyter-training
   repository: file://../jupyter-training
   version: 0.1.0
-digest: sha256:6f99626e245adea300dba3102ffc997e93b55b77817ff5e69c2cf4cb3127c946
-generated: "2026-10-08T09:47:39.185545-04:00"
+digest: sha256:2faba08873d18567dab00b49c1fb421daf8fea1e8a6da440480191cdd3787586
+generated: "2026-10-14T10:39:49.495014-04:00"

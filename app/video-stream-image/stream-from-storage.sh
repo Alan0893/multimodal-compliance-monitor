@@ -1,5 +1,5 @@
 #!/bin/sh
-# Downloads an MP4 from aws-compatible-storage (S4) and streams it to MediaMTX.
+# Downloads an MP4 from aws-compatible-storage and streams it to MediaMTX.
 set -eu
 
 AWS_ENDPOINT_URL="${AWS_ENDPOINT_URL:-http://aws-compatible-storage:7480}"

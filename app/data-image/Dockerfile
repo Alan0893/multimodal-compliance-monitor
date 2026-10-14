@@ -36,13 +36,17 @@ COPY data-image/export_models.py /tmp/export_models.py
 RUN pip install --no-cache-dir git+https://github.com/openai/CLIP.git && \
     python3 /tmp/export_models.py
 
-# Stage 3: AWS CLI uploader, publicly pullable without registry login.
-FROM docker.io/library/alpine@sha256:6baf43584bcb78f2e5847d1de515f23499913ac9f12bdf834811a3145eb11ca1
+# Stage 3: AWS CLI uploader on UBI.
+FROM registry.access.redhat.com/ubi9/python-311:latest
 
-RUN apk add --no-cache aws-cli && \
+USER 0
+
+RUN pip install --no-cache-dir awscli && \
     mkdir -p /etc/aws && \
     AWS_CONFIG_FILE=/etc/aws/config aws configure set default.s3.addressing_style path && \
     chmod a+r /etc/aws/config
+
+USER 1001
 
 WORKDIR /upload
 

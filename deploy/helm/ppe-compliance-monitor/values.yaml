@@ -20,7 +20,7 @@ backend:
     limits:
       cpu: "2"
       memory: 4Gi
-  # Config storage: aws-compatible-storage (S4) config bucket when enabled - enables horizontal scaling
+  # Config storage: aws-compatible-storage config bucket when enabled - enables horizontal scaling
   configStorage:
     enabled: true
   image:
@@ -53,7 +53,7 @@ frontend:
     tag: latest
     pullPolicy: Always
 
-# aws-compatible-storage (S4) from ai-architecture-charts. S3 API stays in-cluster.
+# S3-compatible object storage from ai-architecture-charts. S3 API stays in-cluster.
 # Credentials come from Secret aws-compatible-storage-credentials (AWS_ACCESS_KEY_ID /
 # AWS_SECRET_ACCESS_KEY). Do not put cluster keys in this file; use values-demo.yaml
 # for local demos or a gitignored values-secrets.yaml / --set s3Credentials.* .
@@ -105,7 +105,7 @@ jobImages:
   python: registry.redhat.io/ubi9/python-311:latest
   shell: registry.redhat.io/ubi9/ubi-minimal:latest
 
-# Video stream (RTSP) - always streams. Default: in-cluster MP4 from S4 via MediaMTX
+# Video stream (RTSP) - always streams. Default: in-cluster MP4 from object storage via MediaMTX
 # For real camera: set streamUrl (e.g. rtsp://user:pass@camera-ip:554/stream)
 videoStream:
   # When empty: deploy in-cluster video-stream stack (MP4 from object storage)

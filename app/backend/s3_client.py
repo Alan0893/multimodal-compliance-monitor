@@ -1,4 +1,4 @@
-"""S3 helpers for aws-compatible-storage (S4), using boto3 and AWS_* settings."""
+"""S3 helpers for aws-compatible-storage, using boto3 and AWS_* settings."""
 
 import io
 import os
