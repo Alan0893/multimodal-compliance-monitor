@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help local-up local-build-up local-down build push build-all push-all build-data push-data build-eval push-eval build-runtime push-runtime helm-deps deploy deploy-demo deploy-cpu deploy-gpu deploy-openvino-labelstudio deploy-labelstudio undeploy dev-backend dev-frontend local-build build-push-data build-jupyter-training push-jupyter-training kill-ports check-openai-env eval eval-k8s init-eval-db
+.PHONY: help local-up local-build-up local-down build push build-all push-all build-data push-data build-eval push-eval build-runtime push-runtime helm-deps deploy deploy-cpu deploy-gpu deploy-openvino-labelstudio deploy-labelstudio undeploy dev-backend dev-frontend local-build build-push-data build-jupyter-training push-jupyter-training kill-ports check-openai-env eval eval-k8s init-eval-db
 help:
 	@echo "Available targets:"
 	@echo "  local-up   - Start local stack with Podman Compose"
@@ -14,7 +14,6 @@ help:
 	@echo "  build-runtime - Build runtime deployer container image"
 	@echo "  build-push-data - Build and push data container image (video + models)"
 	@echo "  deploy     - Deploy to OpenShift with OpenVINO CPU runtime (default)"
-	@echo "  deploy-demo - Deploy with local demo storage credentials"
 	@echo "  deploy-cpu - Deploy with CPU runtime (OpenVINO Model Server)"
 	@echo "  deploy-gpu - Deploy with GPU runtime (kserve/Triton)"
 	@echo "  build-jupyter-training - Build Jupyter training image (notebook under ~/work/training)"
@@ -215,15 +214,11 @@ deploy: helm-deps check-openai-env
 		helm_args="$$helm_args -f $(HELM_CHART)/values-secrets.yaml"; \
 	else \
 		echo "ERROR: $(HELM_CHART)/values-secrets.yaml not found."; \
-		echo "  Copy values-demo.yaml to values-secrets.yaml and set real credentials,"; \
-		echo "  or use 'make deploy-demo' for local demo keys."; \
+		echo "  Create values-secrets.yaml with your S3 credentials (see values.yaml for the schema)."; \
 		exit 1; \
 	fi; \
 	helm upgrade --install $(HELM_RELEASE) $(HELM_CHART) \
 		--namespace $(NAMESPACE) --create-namespace $$helm_args
-
-deploy-demo: ## Deploy with local demo S3 credentials (values-demo.yaml)
-	$(MAKE) deploy DEPLOY_VALUES_FILE=$(HELM_CHART)/values-demo.yaml
 
 deploy-gpu: ## Deploy with GPU runtime (kserve/Triton)
 	$(MAKE) deploy RUNTIME_TYPE=kserve

@@ -55,8 +55,8 @@ frontend:
 
 # S3-compatible object storage from ai-architecture-charts. S3 API stays in-cluster.
 # Credentials come from Secret aws-compatible-storage-credentials (AWS_ACCESS_KEY_ID /
-# AWS_SECRET_ACCESS_KEY). Do not put cluster keys in this file; use values-demo.yaml
-# for local demos or a gitignored values-secrets.yaml / --set s3Credentials.* .
+# AWS_SECRET_ACCESS_KEY). Do not put cluster keys in this file; use a gitignored
+# values-secrets.yaml or --set s3Credentials.* .
 aws-compatible-storage:
   enabled: true
   fullnameOverride: aws-compatible-storage
@@ -78,9 +78,8 @@ aws-compatible-storage:
       size: 10Gi
 
 # S3 / UI credential Secret (aws-compatible-storage-credentials).
-# For cluster installs, create values-secrets.yaml (gitignored) from values-demo.yaml
-# or --set s3Credentials.* at deploy time. `make deploy` will fail without credentials.
-# `make deploy-demo` uses values-demo.yaml for local/CI demos.
+# Create values-secrets.yaml (gitignored) or use --set s3Credentials.* at deploy time.
+# `make deploy` will fail without credentials.
 #
 # The Secret must contain at minimum:
 #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY

@@ -227,13 +227,13 @@ Override settings (from the repository root; chart path matches **`HELM_CHART`**
 ```bash
 export HELM_CHART=$(grep '^HELM_CHART ?=' Makefile | sed 's/^HELM_CHART ?= //')
 helm upgrade multimodal-monitoring "$HELM_CHART" \
-  -f "$HELM_CHART/values-demo.yaml" \
+  -f "$HELM_CHART/values-secrets.yaml" \
   --set frontend.apiUrl=/api \
   --set backend.corsOrigins=http://your-frontend-host \
   --set storage.size=2Gi
 ```
 
-S3 credentials are not in `values.yaml`. `make deploy` requires `deploy/helm/ppe-compliance-monitor/values-secrets.yaml`, which is gitignored. Copy `values-demo.yaml` to that file and replace the S3 keys and UI credentials for your cluster. For demos, use `make deploy-demo` to explicitly apply `values-demo.yaml`. Both overlays create Secret `aws-compatible-storage-credentials`.
+S3 credentials are not in `values.yaml`. `make deploy` requires `deploy/helm/ppe-compliance-monitor/values-secrets.yaml`, which is gitignored. Create that file with your S3 keys and UI credentials (see `values.yaml` for the `s3Credentials` schema). The overlay creates Secret `aws-compatible-storage-credentials`.
 
 OpenShift-specific options are included in the chart:
 - Frontend Route: `openshift.route.enabled` and optional `openshift.route.host`

@@ -15,6 +15,15 @@ ROOT = Path(__file__).resolve().parents[3]
 CHART = ROOT / "deploy/helm/ppe-compliance-monitor"
 
 
+_TEST_CREDENTIALS = {
+    "s3Credentials.create": "true",
+    "s3Credentials.accessKeyId": "testkey",
+    "s3Credentials.secretAccessKey": "testsecret",
+    "s3Credentials.uiUsername": "admin",
+    "s3Credentials.uiPassword": "changeme",
+}
+
+
 def render(**values):
     command = [
         "helm",
@@ -23,10 +32,9 @@ def render(**values):
         str(CHART),
         "--namespace",
         "storage-test",
-        "-f",
-        str(CHART / "values-demo.yaml"),
     ]
-    for key, value in values.items():
+    merged = {**_TEST_CREDENTIALS, **values}
+    for key, value in merged.items():
         command.extend(["--set", f"{key}={value}"])
     result = subprocess.run(command, check=True, capture_output=True, text=True)
     return [doc for doc in yaml.safe_load_all(result.stdout) if doc]
@@ -189,19 +197,6 @@ class SecretsIgnore(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_demo_overlay_is_not_ignored(self):
-        result = subprocess.run(
-            [
-                "git",
-                "check-ignore",
-                "--no-index",
-                "deploy/helm/ppe-compliance-monitor/values-demo.yaml",
-            ],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(result.returncode, 1, result.stderr)
 
 
 if __name__ == "__main__":
