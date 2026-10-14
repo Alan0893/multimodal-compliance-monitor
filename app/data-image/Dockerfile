@@ -46,8 +46,6 @@ RUN pip install --no-cache-dir awscli && \
     AWS_CONFIG_FILE=/etc/aws/config aws configure set default.s3.addressing_style path && \
     chmod a+r /etc/aws/config
 
-USER 1001
-
 WORKDIR /upload
 
 COPY --from=extractor /extract/data/combined-video-no-gap-rooftop.mp4 /upload/data/
@@ -60,6 +58,8 @@ COPY --from=exporter /exported-onnx/ /upload/models/
 COPY data-image/config/config.pbtxt /upload/triton-config/config.pbtxt
 COPY data-image/upload.sh /upload/upload.sh
 RUN chmod a+rx /upload/upload.sh && chmod -R a+rX /upload
+
+USER 1001
 
 ENV HOME=/tmp \
     AWS_CONFIG_FILE=/etc/aws/config \
