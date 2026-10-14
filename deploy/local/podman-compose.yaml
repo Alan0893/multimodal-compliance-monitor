@@ -31,7 +31,7 @@ services:
       retries: 30
       start_period: 20s
     volumes:
-      - s4_data:/var/lib/ceph/radosgw
+      - s3_compatible_data:/var/lib/ceph/radosgw
     pull_policy: missing
 
   # PostgreSQL database for tracking data persistence
@@ -331,7 +331,7 @@ services:
       start_period: 30s
 
 volumes:
-  s4_data:
+  s3_compatible_data:
   postgres_data:
   labelstudio_data:
   model_repo:
